@@ -241,16 +241,21 @@ Base.iterate(s::CharString, i::Integer=1) = i ≤ length(s.chars) ? (s.chars[i],
 
     @testset "ComplexInfinity" begin
         @test ComplexInfinity(∞) ≡ convert(ComplexInfinity, ∞) ≡ ComplexInfinity() ≡
-            ComplexInfinity(false) ≡ ComplexInfinity{Bool}(∞) ≡ ComplexInfinity{Bool}(RealInfinity()) ≡ ComplexInfinity{Bool}(ComplexInfinity())
+            ComplexInfinity(false) ≡ ComplexInfinity(RealInfinity()) ≡ ComplexInfinity(ComplexInfinity())
 
-        @test convert(ComplexInfinity{Bool}, ∞) ≡ convert(ComplexInfinity, ∞) ≡ ComplexInfinity()
-        @test convert(ComplexInfinity{Bool}, -∞) ≡ convert(ComplexInfinity, -∞) ≡ -ComplexInfinity()
+        @test convert(ComplexInfinity, -∞) ≡ -ComplexInfinity()
+        # one direction is one value, however it is spelled
+        @test ComplexInfinity(-0.5) ≡ ComplexInfinity(1.5) ≡ ComplexInfinity(3.5)
+        @test ComplexInfinity(1) ≡ ComplexInfinity(3) ≡ ComplexInfinity(true)
+        # a rational direction converts without a float step
+        @test reinterpret(UInt64, ComplexInfinity(2//3)) ≡ 0x5555555555555555
+        @test reinterpret(ComplexInfinity, 0x4000000000000000) ≡ ComplexInfinity(1//2)
 
         @test isinf(ComplexInfinity())
         @test !isfinite(ComplexInfinity())
 
         @test promote(∞, RealInfinity(), ComplexInfinity()) ≡ ntuple(_ -> ComplexInfinity(), 3)
-        @test promote_type(Infinity, ComplexInfinity{Bool}) == promote_type(RealInfinity, ComplexInfinity{Bool}) == ComplexInfinity{Bool}
+        @test promote_type(Infinity, ComplexInfinity) == promote_type(RealInfinity, ComplexInfinity) == ComplexInfinity
 
 
         @test ComplexInfinity(∞) == ∞
@@ -286,14 +291,13 @@ Base.iterate(s::CharString, i::Integer=1) = i ≤ length(s.chars) ? (s.chars[i],
         @test Inf == ComplexInfinity()
         @test ComplexInfinity() == Inf
 
-        @test isless(-ComplexInfinity(), ComplexInfinity())
-        @test isless(5, ComplexInfinity())
-        @test !isless(ComplexInfinity(), 5)
-
-        @test 5 < ComplexInfinity() && 5 ≤ ComplexInfinity()
-        @test !(ComplexInfinity() < 5) && !(ComplexInfinity() ≤ 5)
-        @test 5 > -ComplexInfinity() && 5 ≥ -ComplexInfinity()
-        @test ComplexInfinity() > 5 && ComplexInfinity() ≥  5
+        @test_throws MethodError isless(-ComplexInfinity(), ComplexInfinity())
+        # the complex plane carries no order, so these are undefined as they are for `Complex`
+        @test_throws MethodError isless(5, ComplexInfinity())
+        @test_throws MethodError ComplexInfinity() < 5
+        @test_throws MethodError ComplexInfinity() ≥ 5
+        @test_throws MethodError min(ComplexInfinity(), 5)
+        @test_throws MethodError max(5, ComplexInfinity())
 
         @test 1 + ComplexInfinity() ≡ 1.0 + ComplexInfinity() ≡ ComplexInfinity() + 1 ≡ ComplexInfinity() + 1.0 ≡ ComplexInfinity()
         @test 5 * ComplexInfinity() ≡ ComplexInfinity()
@@ -302,20 +306,15 @@ Base.iterate(s::CharString, i::Integer=1) = i ≤ length(s.chars) ? (s.chars[i],
         @test ComplexInfinity(0.25) * ComplexInfinity(0.5) ≡ ComplexInfinity(0.75)
         @test ComplexInfinity(0.0) + ComplexInfinity() ≡ ComplexInfinity() + ComplexInfinity(0.0) ≡ ComplexInfinity(0.0)
 
-        @test mod(ComplexInfinity(), 5) ≡ NotANumber()
+        @test_throws MethodError mod(ComplexInfinity(), 5)
 
-        @test stringmime("text/plain", ComplexInfinity()) == "exp(false*im*π)∞"
-
-        @testset "min/max" begin
-            @test min(ComplexInfinity(), -ComplexInfinity()) ≡ -ComplexInfinity()
-            @test max(ComplexInfinity(), -ComplexInfinity()) ≡ ComplexInfinity()
-            @test min(ComplexInfinity(), 5) ≡ min(5,ComplexInfinity())  ≡ 5
-            @test max(ComplexInfinity(), 5) ≡ max(5,ComplexInfinity())  ≡ ComplexInfinity()
-        end
+        @test stringmime("text/plain", ComplexInfinity()) == "exp(0.0*im*π)∞"
 
         @testset "fld/cld/div" begin
-            @test div(ComplexInfinity(), 5) ≡ fld(ComplexInfinity(), 5) ≡ ComplexInfinity()
-            @test div(-ComplexInfinity(),2) ≡ -ComplexInfinity()
+            # an integer operation needs a real, and `Base` defines none of these for a `Complex`
+            @test_throws MethodError div(ComplexInfinity(), 5)
+            @test_throws MethodError fld(ComplexInfinity(), 5)
+            @test_throws MethodError div(ComplexInfinity(0.25), 2)
         end
 
         @test signbit(ComplexInfinity(3))
@@ -332,13 +331,10 @@ Base.iterate(s::CharString, i::Integer=1) = i ≤ length(s.chars) ? (s.chars[i],
             @test sign(ComplexInfinity(0.5)) ≡ complex(0.0, 1.0)
             @test sign(ComplexInfinity(0.0)) ≡ complex(1.0, 0.0)
             @test sign(ComplexInfinity(1.0)) ≡ complex(-1.0, 0.0)
-            # an integer angle stays on the real line, where the sign is a real ±1
-            @test sign(ComplexInfinity(false)) ≡ 1
-            @test sign(ComplexInfinity(true)) ≡ -1
-            # off the axes conjugation and negation part company: `-ComplexInfinity(0.25)` is `ComplexInfinity(1.25)`
-            @test conj(ComplexInfinity(0.25)) ≡ ComplexInfinity(1.75)
+            # conjugation negates the direction, so on the real axis it changes nothing
+            @test conj(ComplexInfinity(0.25)) ≡ ComplexInfinity(-0.25)
             @test conj(conj(ComplexInfinity(0.25))) ≡ ComplexInfinity(0.25)
-            @test conj(ComplexInfinity(true)) ≡ ComplexInfinity(true) # the narrow type survives
+            @test conj(ComplexInfinity(true)) ≡ ComplexInfinity(true)
         end
 
         @testset "float" begin
@@ -537,14 +533,21 @@ Base.iterate(s::CharString, i::Integer=1) = i ≤ length(s.chars) ? (s.chars[i],
 
     @testset "NaN arithmetic" begin
         # the answer is the package's own undefined value, as `Inf + ∞` is its own infinity
-        for nan in (NaN, NaN32, NaN16, big(NaN)),
-            inf in (∞, +∞, -∞, ℵ₀, ComplexInfinity(), -ComplexInfinity())
-
+        for nan in (NaN, NaN32, NaN16, big(NaN)), inf in (∞, +∞, -∞, ℵ₀)
             for op in (+, -, *, div, fld, cld)
                 @test op(nan, inf) ≡ op(inf, nan) ≡ NotANumber()
             end
             # `mod(inf, x)` discards `x`, so only one order is needed
             @test mod(nan, inf) ≡ NotANumber()
+        end
+        for nan in (NaN, NaN32, NaN16, big(NaN)), inf in (ComplexInfinity(), -ComplexInfinity())
+            for op in (+, -, *)
+                @test op(nan, inf) ≡ op(inf, nan) ≡ NotANumber()
+            end
+            # `Base` defines no integer operation for a `Complex`, and neither do we
+            for op in (div, fld, cld, mod, rem)
+                @test_throws MethodError op(nan, inf)
+            end
         end
         for nan in (NaN, NaN32, NaN16, big(NaN)), inf in (+∞, -∞)
             @test inf^nan ≡ NotANumber()
@@ -554,7 +557,9 @@ Base.iterate(s::CharString, i::Integer=1) = i ≤ length(s.chars) ? (s.chars[i],
     @testset "NotANumber" begin
         nan = NotANumber()
         # every operand it can meet, itself included
-        operands = (nan, 0, 1.5, ∞, +∞, -∞, ℵ₀, ComplexInfinity(), NaN, NaN32)
+        reals = (nan, 0, 1.5, ∞, +∞, -∞, ℵ₀, NaN, NaN32)
+        complexes = (ComplexInfinity(), ComplexInfinity(0.25), complex(1.0, 2.0))
+        operands = (reals..., complexes...)
         @test isnan(nan) && !isinf(nan) && !isfinite(nan) && !iszero(nan) && !isone(nan) && !signbit(nan)
         @test !isinteger(nan)
         # a `NaN` of any real type is real, and this is the type-independent one
@@ -587,8 +592,12 @@ Base.iterate(s::CharString, i::Integer=1) = i ≤ length(s.chars) ? (s.chars[i],
         @test isnan(BigFloat(nan))
 
         # anything computed from it is undefined again
-        for op in (+, -, *, /, ^, div, fld, cld, mod, rem, min, max), x in operands
+        for op in (+, -, *, /, ^, div, fld, cld, mod, rem, min, max), x in reals
             @test op(nan, x) ≡ op(x, nan) ≡ nan
+        end
+        # a complex operand makes the undefined result complex, as it does over the floats
+        for op in (+, -, *, /, ^, div, fld, cld, mod, rem, min, max), x in complexes
+            @test op(nan, x) ≡ op(x, nan) ≡ complex(nan, nan)
         end
         for x in operands
             @test divrem(nan, x) ≡ divrem(x, nan) ≡ (nan, nan)

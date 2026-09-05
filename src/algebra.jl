@@ -15,15 +15,14 @@
 +(::Infinity) = RealInfinity()
 -(::Infinity) = RealInfinity(true)
 -(y::RealInfinity) = RealInfinity(!signbit(y))
--(y::ComplexInfinity{B}) where B<:Integer = sign(y) == 1 ? ComplexInfinity(one(B)) : ComplexInfinity(zero(B))
--(y::ComplexInfinity) = ComplexInfinity(mod(y.signbit + 1, 2))
+-(y::ComplexInfinity) = _direction(y.turns ⊻ _HALFTURN)
 +(x::InfiniteCardinal) = x
 -(::InfiniteCardinal) = -∞
 
 
 # addition
 @inline toinf(x) = RealInfinity(signbit(x))
-@inline toinf(x::Complex) = ComplexInfinity(angle(x))
+@inline toinf(x::Complex) = _direction(_turnsof(x))
 @inline toinf(x::ComplexInfinity) = x
 
 @inline _infadd(x, y) = angle(x) == angle(y) ? y : NotANumber()
@@ -49,14 +48,12 @@
 
 # multiplication
 
-@inline _sb(x) = signbit(x)
-@inline _sb(x::Complex) = angle(x)/π # overloading `signbit` causes type piracy
-@inline _sb(x::ComplexInfinity) = x.signbit # the whole angle, not just its sign
+@inline _turnsof(x) = signbit(x) ? _HALFTURN : zero(UInt64)
+@inline _turnsof(x::Complex) = _turns(angle(x) / π) # overloading `signbit` causes type piracy
+@inline _turnsof(x::ComplexInfinity) = x.turns
 
-@inline __mul(x, y::AllInfinities) = RealInfinity(_sb(x) ⊻ _sb(y))
-@inline __mul(x, y::ComplexInfinity) = ComplexInfinity(_sb(x) + _sb(y))
-@inline __mul(x, y::ComplexInfinity{Bool}) = ComplexInfinity(_sb(x) ⊻ _sb(y))
-@inline __mul(x::Complex, y::ComplexInfinity{Bool}) = ComplexInfinity(_sb(x) + _sb(y))
+@inline __mul(x, y::AllInfinities) = RealInfinity(signbit(x) ⊻ signbit(y))
+@inline __mul(x, y::ComplexInfinity) = _direction(_turnsof(x) + _turnsof(y))
 @inline __mul(x::Integer, y::InfiniteCardinal) = x > 0 ? y : throw(ArgumentError("Cannot multiply $x * $y"))
 
 @inline function _mul(x, y)
