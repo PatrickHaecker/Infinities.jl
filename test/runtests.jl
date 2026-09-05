@@ -247,6 +247,7 @@ Base.iterate(s::CharString, i::Integer=1) = i ≤ length(s.chars) ? (s.chars[i],
         # one direction is one value, however it is spelled
         @test ComplexInfinity(-0.5) ≡ ComplexInfinity(1.5) ≡ ComplexInfinity(3.5)
         @test ComplexInfinity(1) ≡ ComplexInfinity(3) ≡ ComplexInfinity(true)
+        @test isreal(ComplexInfinity()) && isreal(-ComplexInfinity()) && !isreal(ComplexInfinity(0.25))
         # a rational direction converts without a float step
         @test reinterpret(UInt64, ComplexInfinity(2//3)) ≡ 0x5555555555555555
         @test reinterpret(ComplexInfinity, 0x4000000000000000) ≡ ComplexInfinity(1//2)
@@ -298,6 +299,11 @@ Base.iterate(s::CharString, i::Integer=1) = i ≤ length(s.chars) ? (s.chars[i],
         @test_throws MethodError ComplexInfinity() ≥ 5
         @test_throws MethodError min(ComplexInfinity(), 5)
         @test_throws MethodError max(5, ComplexInfinity())
+        # a direction on the axis converts, as `Real(::Complex)` does
+        @test RealInfinity(ComplexInfinity()) ≡ +∞
+        @test RealInfinity(-ComplexInfinity()) ≡ -∞
+        @test_throws InexactError RealInfinity(ComplexInfinity(0.25))
+        @test 5 < RealInfinity(ComplexInfinity())
 
         @test 1 + ComplexInfinity() ≡ 1.0 + ComplexInfinity() ≡ ComplexInfinity() + 1 ≡ ComplexInfinity() + 1.0 ≡ ComplexInfinity()
         @test 5 * ComplexInfinity() ≡ ComplexInfinity()
@@ -315,6 +321,7 @@ Base.iterate(s::CharString, i::Integer=1) = i ≤ length(s.chars) ? (s.chars[i],
             @test_throws MethodError div(ComplexInfinity(), 5)
             @test_throws MethodError fld(ComplexInfinity(), 5)
             @test_throws MethodError div(ComplexInfinity(0.25), 2)
+            @test div(RealInfinity(ComplexInfinity()), 5) ≡ +∞
         end
 
         @test signbit(ComplexInfinity(3))
