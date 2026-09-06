@@ -283,9 +283,21 @@ Base.iterate(s::CharString, i::Integer=1) = i ≤ length(s.chars) ? (s.chars[i],
              ComplexInfinity() * ∞ ≡ ComplexInfinity() * RealInfinity() ≡ ComplexInfinity()
 
         @test  2.0im*∞ ≡ ∞*2.0im ≡ 2.0im * RealInfinity() ≡ RealInfinity() * 2.0im ≡ ComplexInfinity(1/2)
+        # On an axis `angle(x)/π` is exact, `angle` giving exactly `0`, `±π/2` or `π` and halving being exact.
+        for (z, s, w) in ((2.0+0.0im, 0.0, complex(Inf, 0.0)), (2.0im, 0.5, complex(0.0, Inf)),
+                          (-2.0+0.0im, 1.0, complex(-Inf, 0.0)), (-2.0im, -0.5, complex(0.0, -Inf)))
+            @test z*∞ ≡ ComplexInfinity(s)
+            @test z*∞ == w
+        end
         @test 2ComplexInfinity() ≡ ComplexInfinity()*2 ≡ ComplexInfinity()
 
-        @test exp(im*π/4)*∞ == Inf+im*Inf
+        # Off the axes it is not exact in general: `angle(exp(im*π/8))/π` gives 0.12500000000000003.
+        for θ in (π/8, π/4, 0.3, -2.4)
+            @test angle(exp(im*θ)*∞) ≈ angle(∞*exp(im*θ)) ≈ θ
+        end
+        # The direction is the one the operand actually has, so rescaling keeps it only while it is exact.
+        @test 4*(0.3+0.1im)*∞ ≡ (0.3+0.1im)*∞
+        @test 3*(0.3+0.1im)*∞ ≢ (0.3+0.1im)*∞
         @test exp(im*π/4)+∞ == ∞
         @test Inf + im + ∞ ≡ ComplexInfinity()
 
