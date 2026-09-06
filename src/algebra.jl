@@ -44,13 +44,14 @@
 
 # multiplication
 
-@inline _sb(x) = signbit(x)
-@inline _sb(x::Complex) = angle(x)/π # overloading `signbit` causes type piracy 
+# The direction of an infinity in half turns, which for a real is its sign bit.
+@inline _halfturns(x) = signbit(x)
+@inline _halfturns(x::Complex) = angle(x)/π
 
-@inline __mul(x, y::AllInfinities) = RealInfinity(_sb(x) ⊻ _sb(y))
-@inline __mul(x, y::ComplexInfinity) = ComplexInfinity(_sb(x) + _sb(y))
-@inline __mul(x, y::ComplexInfinity{Bool}) = ComplexInfinity(_sb(x) ⊻ _sb(y))
-@inline __mul(x::Complex, y::ComplexInfinity{Bool}) = ComplexInfinity(_sb(x) + _sb(y))
+@inline __mul(x, y::AllInfinities) = RealInfinity(_halfturns(x) ⊻ _halfturns(y))
+@inline __mul(x, y::ComplexInfinity) = ComplexInfinity(_halfturns(x) + _halfturns(y))
+@inline __mul(x, y::ComplexInfinity{Bool}) = ComplexInfinity(_halfturns(x) ⊻ _halfturns(y))
+@inline __mul(x::Complex, y::ComplexInfinity{Bool}) = ComplexInfinity(_halfturns(x) + _halfturns(y))
 @inline __mul(x::Integer, y::InfiniteCardinal) = x > 0 ? y : throw(ArgumentError("Cannot multiply $x * $y"))
 
 @inline _mul(x, y) = iszero(x) ? throw(ArgumentError("Cannot multiply $x * $y")) : __mul(infpromote(x, y)...)
