@@ -17,9 +17,14 @@
 -(::InfiniteCardinal) = -∞
 
 
+# The direction of an infinity in half turns, which for a real is its sign bit.
+@inline _halfturns(x) = signbit(x)
+@inline _halfturns(x::Complex) = angle(x)/π
+
+
 # addition
 @inline toinf(x) = RealInfinity(signbit(x))
-@inline toinf(x::Complex) = ComplexInfinity(angle(x))
+@inline toinf(x::Complex) = ComplexInfinity(_halfturns(x))
 @inline toinf(x::ComplexInfinity) = x
 
 @inline _infadd(x, y) = angle(x) == angle(y) ? y : throw(ArgumentError("Angles must be the same to add ∞"))
@@ -43,10 +48,6 @@
 -(x::AllInfinities, y::AllInfinities) = _sub(x, y)
 
 # multiplication
-
-# The direction of an infinity in half turns, which for a real is its sign bit.
-@inline _halfturns(x) = signbit(x)
-@inline _halfturns(x::Complex) = angle(x)/π
 
 @inline __mul(x, y::AllInfinities) = RealInfinity(_halfturns(x) ⊻ _halfturns(y))
 @inline __mul(x, y::ComplexInfinity) = ComplexInfinity(_halfturns(x) + _halfturns(y))
