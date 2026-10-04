@@ -162,7 +162,7 @@ function archimedean(magnitude::Bool, direction::Union{Symbol, Expr}, args::Unio
         position = positioning(T, unbounded, negated_unbounded)
         magnitude ? Expr(:block, position, scaling(T, scalars)) : position
     end
-    Expr(:block, definitions...)
+    Expr(:block, definitions..., nothing)
 end
 
 """
@@ -182,7 +182,6 @@ function positioning(T::Expr, unbounded::Type, negated_unbounded::Type)
         Base.:+(x::$unbounded, ::$T) = x
         Base.:-(x::$unbounded, ::$T) = x
         Base.:-(::$T, y::$negated_unbounded) = -y
-        nothing
     end
 end
 
@@ -200,7 +199,6 @@ function scaling(T::Expr, scalars::Type)
         Base.div(x::$T, ::$scalars, ::RoundingMode) = zero(typeof(x))
         Base.rem(x::$T, ::$scalars) = x
         Base.mod(x::$T, y::$scalars) = _modulo(x, y)
-        nothing
     end
 end
 
